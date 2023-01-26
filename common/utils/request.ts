@@ -3,7 +3,7 @@ import { message } from 'antd';
 
 const instance = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 60000,
 });
 
 type HandleLoading = (loading: boolean) => void;
