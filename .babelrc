@@ -1,0 +1,16 @@
+{
+  "presets": ["next/babel"],
+  "plugins": [
+    [
+      "module-resolver",
+      {
+        "alias": {
+          "@utils": "./common/utils",
+          "@types": "./common/types",
+          "@consts": "./common/consts",
+          "@components": "./common/components"
+        }
+      }
+    ]
+  ]
+}
