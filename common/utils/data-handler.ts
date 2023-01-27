@@ -27,6 +27,12 @@ type TotalLineData = {
   };
 };
 
+export type Options = {
+  filters?: string[];
+  dateCount?: number;
+  unit: 'd' | 'M' | 'y';
+};
+
 const sum = (
   array: number[],
   i: number = 0,
@@ -39,9 +45,10 @@ const sum = (
 };
 
 export default class DataHandler {
-  constructor(rawRecordArr: RawRecord[]) {
+  constructor(rawRecordArr: RawRecord[], options?: Options) {
     this.updateData(rawRecordArr);
     this.getTitle = this.getTitle.bind(this);
+    this.setOptions(options);
   }
 
   updateData(rawRecordArr: RawRecord[]) {
@@ -54,42 +61,39 @@ export default class DataHandler {
   //   endDate && (this.endDate = endDate);
   // }
 
-  setDateCount(
-    dateCount: number,
-    unit?: 'd' | 'M' | 'y',
-    dataRange?: number[],
-  ) {
+  setOptions(options?: Options) {
+    const {
+      filters = this.filters,
+      dateCount = this.dateCount || 1,
+      unit = this.dateUnit || 'M',
+    } = options || {};
+
+    this.filters = filters;
     this.dateCount = dateCount;
     unit && (this.dateUnit = unit);
     this.getLineData();
     const dataLength = (this.lineData?.result?.[0]?.length || 1) - 1;
-    if (dataRange) {
-      this.dataRange = [
-        Math.max(0, dataRange[0] || 0),
-        Math.min(dataLength - 1, dataRange[1] || Infinity),
-      ];
-    } else {
-      this.dataRange = [
-        {
-          d: Math.max(0, dataLength - 365),
-          M: Math.max(0, dataLength - 12),
-          y: 0,
-        }[this.dateUnit],
-        dataLength - 1,
-      ];
-    }
+    this.dataRange = [
+      {
+        d: Math.max(0, dataLength - 365),
+        M: Math.max(0, dataLength - Math.max(4, 12 / dateCount)),
+        y: 0,
+      }[this.dateUnit || 'M'],
+      dataLength - 1,
+    ];
   }
 
   private startDate: number = dayjs().set('M', 1).set('date', 1).valueOf();
   private endDate: number = dayjs().valueOf();
   private dateCount: number = 1;
-  private dateUnit: 'd' | 'M' | 'y' = 'M';
+  private dateUnit: Options['unit'] = 'M';
   private lineData?: TotalLineData;
 
   private rawRecordArr: RawRecord[] = [];
 
   private recordMap: Record<string, RecordInfo> = {};
   private dataRange = [0, 0];
+  private filters: string[] = [];
 
   handleXlsx = () => {
     const { rawRecordArr = [] } = this;
@@ -147,7 +151,10 @@ export default class DataHandler {
 
     let [s, e] = [
       dayjs(startDate).startOf(unit),
-      dayjs(startDate).add(count, unit),
+      dayjs(startDate)
+        .add(count, unit)
+        .startOf(unit)
+        .subtract(1, 'millisecond'),
     ];
 
     // 数据初始化
@@ -177,7 +184,9 @@ export default class DataHandler {
         timeArr.push(s.format(timeFormat));
       }
       Object.values(recordMap).forEach(record => {
-        resultMap[record.name].push(record.getAmount(s.valueOf(), e.valueOf()));
+        resultMap[record.name].push(
+          record.getAmount(s.valueOf(), e.valueOf(), this.filters),
+        );
 
         // 对收支数据进行额外的计算
         costMap[record.incomeOrCost || 0].add(record.name);

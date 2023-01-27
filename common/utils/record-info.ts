@@ -2,6 +2,12 @@ import { IncomeOrCost, incomeOrCostInfoMap } from '@consts/index';
 import { RecordDetail, RawRecord } from '@types';
 import dayjs from 'dayjs';
 
+export const getItemKey = (item: Record<string, any>) => {
+  return `${item['时间']}_${item['账目分类']}_${item['金额']}_${
+    item['备注'] || '-'
+  }`;
+};
+
 export default class RecordInfo {
   constructor(name: string, incomeOrCost?: IncomeOrCost) {
     this._name = name;
@@ -11,6 +17,8 @@ export default class RecordInfo {
   private _duplicate: boolean = false;
 
   list: RecordDetail[] = [];
+
+  getItemKey = getItemKey;
 
   get name() {
     const { _name, _duplicate, incomeOrCost } = this;
@@ -34,14 +42,17 @@ export default class RecordInfo {
       amount: Math.abs(rawRecord['金额']),
       date: dayjs(rawRecord['时间'], 'YYYY/MM/DD').valueOf(),
       desc: rawRecord['备注'],
+      key: getItemKey(rawRecord),
     };
     this.list.push(record);
   }
 
-  getAmount(startDate: number, endDate: number) {
+  getAmount(startDate: number, endDate: number, filters?: string[]) {
     let amount = 0;
-
     for (let record of this.list) {
+      if (filters?.includes(record.key || '')) {
+        continue;
+      }
       if (record.date < startDate) {
         continue;
       }

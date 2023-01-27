@@ -24,7 +24,7 @@ export default class TotalInfo extends RecordInfo {
     }
   }
 
-  getAmount(startDate: number, endDate: number) {
+  getAmount(startDate: number, endDate: number, filters?: string[]) {
     const { list } = this;
     let i = list.findIndex(record => {
       return record.date >= endDate;

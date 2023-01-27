@@ -7,6 +7,7 @@ export type RecordDetail = {
   date: number;
   ignore?: boolean;
   desc?: string;
+  key?: string;
 };
 
 export type RawRecord = {

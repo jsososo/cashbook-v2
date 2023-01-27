@@ -1,7 +1,9 @@
 import type { NextPage } from 'next';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import ReactECharts from 'echarts-for-react';
-import DataHandler from '@utils/data-handler';
+import DataHandler, {
+  Options as DataHandlerOptions,
+} from '@utils/data-handler';
 import type { EChartsOption } from 'echarts';
 import { merge } from 'lodash-es';
 import storage from '@utils/storage';
@@ -14,6 +16,7 @@ import { getDataFromEmail } from '../common/services';
 import Header from '@components/header';
 import UserLogin from '@components/user-login';
 import type { UserInfo } from '@types';
+import { SettingVal } from '@components/settings';
 
 const Home: NextPage = () => {
   const [lineOptions, setLineOptions] = useState<EChartsOption>();
@@ -24,7 +27,17 @@ const Home: NextPage = () => {
   const pieRef = useRef<any>();
   const [userInfo, setUserInfo] = storage.useStorage<UserInfo>('user-info');
   const [loginVisible, setLoginVisible] = useState(false);
-  const [emptyVisible, setEmptyVisible] = useState(false);
+  const [emptyVisible, setEmptyVisible] = useState(true);
+  const [passRecord] = storage.useStorage<string[]>('pass_record');
+  const [settingVal] = storage.useStorage<SettingVal>('setting_val');
+
+  const options: DataHandlerOptions = useMemo(() => {
+    return {
+      filters: settingVal?.filter ? passRecord || [] : undefined,
+      dateCount: settingVal?.dateCount || 1,
+      unit: settingVal?.unit || 'M',
+    };
+  }, [passRecord, settingVal]);
 
   const queryData = useCallback(
     (key?: string, email?: string) => {
@@ -62,26 +75,34 @@ const Home: NextPage = () => {
         }
         let dataHandler = dataRef.current;
         if (!dataHandler) {
-          dataHandler = new DataHandler(data);
+          dataHandler = new DataHandler(data, options);
           dataRef.current = dataHandler;
         } else {
           dataHandler.updateData(data);
         }
-        dataHandler.setDateCount(1);
 
         setLineOptions(dataHandler.getLineOptions());
         setPieOptions(dataHandler.getPieOptions(0));
       });
     },
-    [userInfo],
+    [userInfo, options],
   );
 
   useEffect(() => {
-    console.log('userInfo: ', userInfo);
+    const dataHandler = dataRef.current;
+    if (dataHandler) {
+      dataHandler.setOptions(options);
+      setLineOptions(dataHandler.getLineOptions());
+      setPieOptions(dataHandler.getPieOptions(0));
+    }
+  }, [options]);
+
+  useEffect(() => {
     if (!userInfo) {
       setLineOptions(undefined);
       setPieOptions(undefined);
       setLoginVisible(true);
+      setEmptyVisible(false);
     } else {
       queryData();
     }
@@ -97,11 +118,11 @@ const Home: NextPage = () => {
     setLoginVisible(!userInfo);
   }, [userInfo]);
 
-  const updatePieOpts = (dataIndex: number) => {
+  const updatePieOpts = useCallback((dataIndex: number) => {
     if (dataRef.current) {
       setPieOptions(dataRef.current.getPieOptions(dataIndex));
     }
-  };
+  }, []);
 
   const lineEnvent = useMemo(
     () => ({

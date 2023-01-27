@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { events } from './events';
 
 type CustomStroage = {
@@ -10,6 +10,7 @@ type CustomStroage = {
 const storage: CustomStroage = {
   get: (key: string) => {
     const string = localStorage.getItem(key) || '';
+
     try {
       return JSON.parse(string);
     } catch (err) {
@@ -27,15 +28,14 @@ const storage: CustomStroage = {
   },
 
   useStorage: key => {
-    const [data, setData] = useState();
+    const [data, setData] = useState(storage.get(key));
     const handler = useRef((value: any) => {
       storage.set(key, value);
       setData(storage.get(key));
     });
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       events.bind(key, handler.current);
-
       return () => {
         events.remove(key, handler.current);
       };

@@ -9,11 +9,6 @@ type Props = {
 
 const UserLogin = ({ queryData }: Props) => {
   const [form] = Form.useForm();
-  const [hostOptions, setHostOptions] = useState([
-    { label: 'QQ邮箱', value: 'smtp.qq.com' },
-    { label: 'Outlook', value: 'imap-mail.outlook.com' },
-    { label: 'GMail', value: 'imap.gmail.com' },
-  ]);
 
   const onSubmit = () => {
     const { email, password, host } = form.getFieldsValue();
