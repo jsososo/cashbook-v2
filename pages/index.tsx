@@ -151,7 +151,6 @@ const Home: NextPage = () => {
         if (dataHandler) {
           merge(dataHandler.lineLegendSelected, event.selected);
           storage.set('line_legend_selected', dataHandler.lineLegendSelected);
-          setLineOptions(dataHandler.getLineOptions());
         }
       },
     }),

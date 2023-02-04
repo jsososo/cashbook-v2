@@ -191,8 +191,8 @@ export default class DataHandler {
         // 对收支数据进行额外的计算
         costMap[record.incomeOrCost || 0].add(record.name);
       });
-      s = s.add(count, unit);
-      e = e.add(count, unit);
+      s = s.add(count, unit).startOf(unit);
+      e = e.add(count, unit).endOf(unit);
     } while (s.valueOf() <= endDate);
 
     Object.entries(resultMap).forEach(([typeName, arr]) => {
@@ -242,15 +242,22 @@ export default class DataHandler {
 
   private pieDataIndex: number = 0;
 
-  private getTitle(isRange?: boolean) {
-    const { lineData, pieDataIndex, dataRange } = this;
+  private getTitle(isRange?: boolean, showCount?: boolean) {
+    const { lineData, pieDataIndex, dataRange, dateCount, dateUnit } = this;
     const [startIndex, endIndex] = dataRange;
+    const unitMap = { d: '日', M: '月', y: '年' };
     if (!lineData) {
       return '';
     }
     if (isRange) {
-      return `${lineData?.result?.[0]?.[startIndex + 1] || ''} - ${
-        lineData?.result?.[0]?.[endIndex + 1] || ''
+      return `${(lineData?.result?.[0]?.[startIndex + 1] || '')
+        .split('-')
+        .shift()} - ${(lineData?.result?.[0]?.[endIndex + 1] || '')
+        .split('-')
+        .pop()}${
+        showCount
+          ? ` 每${dateCount > 1 ? dateCount : ''}${unitMap[dateUnit]}`
+          : ''
       }`;
     } else {
       return `${lineData?.result?.[0]?.[pieDataIndex + 1] || ''}`;
@@ -271,18 +278,22 @@ export default class DataHandler {
 
   getLineOptions(): EChartsOption {
     const source = this?.lineData?.result || [];
-    const { dataRange } = this;
-    const [start, end] = dataRange;
-    const legendDataList = source
-      .filter(val => sum(val, start + 1, end + 1))
-      .map(list => list[0]);
+    const legendDataList = source.map(list => list[0]);
+    const legendSelected = legendDataList.reduce(
+      (prev, name) => ({
+        ...prev,
+        [name]: this.lineLegendSelected[name] ?? true,
+      }),
+      {},
+    );
+    legendDataList.shift();
     return {
       xAxis: {
         type: 'category',
         boundaryGap: false,
       },
       title: {
-        text: `${this.getTitle(true)} 趋势`,
+        text: `${this.getTitle(true, true)} 趋势`,
       },
       dataZoom: [
         {
@@ -294,7 +305,7 @@ export default class DataHandler {
         type: 'scroll',
         width: '80%',
         data: legendDataList,
-        selected: this.lineLegendSelected,
+        selected: legendSelected,
         top: '8%',
       },
       tooltip: {
@@ -362,7 +373,7 @@ export default class DataHandler {
         .map(resultArr => ({
           name: resultArr[0],
           value: isTotal
-            ? sum(resultArr, startIndex + 1, endIndex + 1)
+            ? sum(resultArr, startIndex + 1, endIndex + 2)
             : resultArr[(dataIndex ?? this.pieDataIndex) + 1] || 0,
         }))
         .filter(({ value }) => value);

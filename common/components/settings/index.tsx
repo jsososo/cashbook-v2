@@ -22,6 +22,8 @@ const Settings = ({ dataHandler }: SettingsProps) => {
   const [settingVal, setSettingVal] =
     storage.useStorage<SettingVal>('setting_val');
 
+  const checkedFilter = Form.useWatch('filter', form);
+
   return (
     <>
       <SettingOutlined onClick={() => setVisible(true)} />
@@ -34,8 +36,8 @@ const Settings = ({ dataHandler }: SettingsProps) => {
           form={form}
           initialValues={settingVal}
           onValuesChange={(_, val) => setSettingVal(val)}>
-          <Form.Item label="时间间隔" name="dateCount">
-            <InputNumber min={1} max={12} step={1} />
+          <Form.Item label="时间间隔" name="dateCount" initialValue={1}>
+            <InputNumber min={1} max={12} step={1} addonAfter="月" />
           </Form.Item>
           {/*<Form.Item label="时间单位" name="unit">
             <Select
@@ -47,7 +49,7 @@ const Settings = ({ dataHandler }: SettingsProps) => {
             />
           </Form.Item> */}
           <Form.Item label="过滤异常数据" name="filter">
-            <Switch />
+            <Switch checked={checkedFilter} />
           </Form.Item>
           {dataHandler && filterRecordVisible && (
             <FilterRecord dataHandler={dataHandler} />

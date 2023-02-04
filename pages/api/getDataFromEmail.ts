@@ -146,8 +146,6 @@ export default function handler(
 
           const result = xlsx.utils.sheet_to_json(workBook.Sheets['收支记录']);
 
-          fs.writeJSON(jsonFIlePath, result);
-
           res.status(200).json({
             success: true,
             code: 0,
