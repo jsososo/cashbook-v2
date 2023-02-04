@@ -33,7 +33,7 @@ const Home: NextPage = () => {
 
   const options: DataHandlerOptions = useMemo(() => {
     return {
-      filters: settingVal?.filter ? passRecord || [] : undefined,
+      filters: settingVal?.filter ? passRecord || [] : [],
       dateCount: settingVal?.dateCount || 1,
       unit: settingVal?.unit || 'M',
     };
