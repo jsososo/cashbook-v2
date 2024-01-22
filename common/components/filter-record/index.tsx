@@ -9,10 +9,10 @@ import {
   Row,
   Col,
 } from 'antd';
-import DataHandler from '@utils/data-handler';
+import DataHandler from '@utils/chart/data-handler';
 import { FcRed, FcGreen } from './styled';
 import storage from '@utils/storage';
-import { getItemKey } from '@utils/record-info';
+import { getItemKey } from '@utils/chart/record-info';
 import dayjs from 'dayjs';
 
 type SettingsProps = {

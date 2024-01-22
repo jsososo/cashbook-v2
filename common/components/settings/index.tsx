@@ -2,7 +2,7 @@ import { Drawer, Form, Switch, InputNumber, Select } from 'antd';
 import { SettingOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 import FilterRecord from '../filter-record';
-import DataHandler from '@utils/data-handler';
+import DataHandler from '@utils/chart/data-handler';
 import storage from '@utils/storage';
 
 type SettingsProps = {

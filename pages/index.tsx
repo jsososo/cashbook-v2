@@ -1,209 +1,139 @@
-import type { NextPage } from 'next';
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import ReactECharts from 'echarts-for-react';
-import DataHandler, {
-  Options as DataHandlerOptions,
-} from '@utils/data-handler';
-import type { EChartsOption } from 'echarts';
-import { merge } from 'lodash-es';
+import Cashbook from '@utils/cashbook';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  createContext,
+  useState,
+  useMemo,
+} from 'react';
+import dayjs from 'dayjs';
+import { num } from '@utils/math';
+import { IncomeOrCost } from '@consts';
 import storage from '@utils/storage';
-import Wrapper, {
-  EmptyWrapper,
-  LayoutContent,
-} from '@components/style/index-page';
-import { Spin } from 'antd';
-import { getDataFromEmail } from '../common/services';
-import Header from '@components/header';
-import UserLogin from '@components/user-login';
-import type { UserInfo } from '@types';
-import { SettingVal } from '@components/settings';
+import { getUserInfo, ServiceUserInfo } from '../common/services';
+import BillingTimeline from '@components/timeline';
+import Billing from '@utils/billing';
+import DrawerBilling from '@components/drawer-billing';
+import { EditBtn } from '@components/style/index-page';
+import { PlusOutlined } from '@ant-design/icons';
+import { useUpdate } from 'ahooks';
+import { Row, Col, Tabs } from 'antd';
+import AccountList from '@components/account-list';
+import CategoryList from '@components/category-list';
+import Chart from '@components/chart';
 
-const Home: NextPage = () => {
-  const [lineOptions, setLineOptions] = useState<EChartsOption>();
-  const [pieOptions, setPieOptions] = useState<EChartsOption>();
-  const [loading, setLoading] = useState<boolean>(false);
-  const dataRef = useRef<DataHandler>();
-  const lineRef = useRef<any>();
-  const pieRef = useRef<any>();
-  const [userInfo, setUserInfo] = storage.useStorage<UserInfo>('user-info');
-  const [loginVisible, setLoginVisible] = useState(false);
-  const [emptyVisible, setEmptyVisible] = useState(true);
-  const [passRecord] = storage.useStorage<string[]>('pass_record');
-  const [settingVal] = storage.useStorage<SettingVal>('setting_val');
+export type DrawerBilling = {
+  billing?: Billing;
+  isCreate?: boolean;
+  transBilling?: Billing[];
+};
 
-  const options: DataHandlerOptions = useMemo(() => {
-    return {
-      filters: settingVal?.filter ? passRecord || [] : [],
-      dateCount: settingVal?.dateCount || 1,
-      unit: settingVal?.unit || 'M',
-    };
-  }, [passRecord, settingVal]);
+export const CashbookContext = createContext({
+  cashbook: new Cashbook(),
+  drawerBilling: {} as DrawerBilling,
+  setDrawerBilling: (state: DrawerBilling) => {},
+  forceUpdate: () => {},
+  filter: {} as Record<string, any>,
+  setFilter: (val: Record<string, any>) => {},
+});
 
-  const queryData = useCallback(
-    (key?: string, email?: string) => {
-      if (!key && !userInfo) {
-        return;
-      }
-      getDataFromEmail(
-        { key: key || userInfo?.key },
-        {
-          handleLoading: setLoading,
-        },
-      ).then(({ data, err }) => {
-        setEmptyVisible(false);
-        if (
-          err?.message?.includes?.('没有收到 export@data.qeeniao.com 的邮件') &&
-          email &&
-          key
-        ) {
-          setUserInfo({
-            email,
-            key,
-          });
-          setEmptyVisible(true);
-          return;
-        }
+const IndexPage = () => {
+  const refCashbook = useRef<Cashbook>();
 
-        if (!data) {
-          return;
-        }
-        if (key && email) {
-          setUserInfo({
-            email: email || '',
-            key,
-          });
-        }
-        let dataHandler = dataRef.current;
-        if (!dataHandler) {
-          dataHandler = new DataHandler(data, options);
-          dataRef.current = dataHandler;
-        } else {
-          dataHandler.updateData(data);
-        }
+  const [token] = storage.useStorage<string>('token');
+  const [userData, setUserData] =
+    storage.useStorage<ServiceUserInfo>('user_data');
+  const [cashbook, setCashbook] = useState(new Cashbook(userData));
+  const [drawerBilling, setDrawerBilling] = useState<DrawerBilling>({});
+  const [filter, setFilter] = useState<Record<string, any>>({});
+  const forceUpdate = useUpdate();
 
-        setLineOptions(dataHandler.getLineOptions());
-        setPieOptions(dataHandler.getPieOptions(0));
-      });
-    },
-    [userInfo, options],
-  );
-
-  useEffect(() => {
-    const dataHandler = dataRef.current;
-    if (dataHandler) {
-      dataHandler.setOptions(options);
-      setLineOptions(dataHandler.getLineOptions());
-      setPieOptions(dataHandler.getPieOptions(0));
+  // 日历渲染
+  const dateCellRender = useCallback((v: dayjs.Dayjs) => {
+    if (!refCashbook.current) {
+      return null;
     }
-  }, [options]);
-
-  useEffect(() => {
-    if (!userInfo) {
-      setLineOptions(undefined);
-      setPieOptions(undefined);
-      setLoginVisible(true);
-      setEmptyVisible(false);
-    } else {
-      queryData();
-    }
-  }, [userInfo]);
-
-  useEffect(() => {
-    if (dataRef.current) {
-      setLoginVisible(false);
-    }
-  }, [dataRef.current]);
-
-  useEffect(() => {
-    setLoginVisible(!userInfo);
-  }, [userInfo]);
-
-  const updatePieOpts = useCallback((dataIndex: number) => {
-    if (dataRef.current) {
-      setPieOptions(dataRef.current.getPieOptions(dataIndex));
-    }
+    const { cost, income } = (
+      refCashbook.current.billingsDateMap[v.format('YYYY-MM-DD')] || []
+    ).reduce(
+      ({ cost, income }, { isTransfer, incomeOrCost, amount }) => ({
+        cost: num(
+          cost +
+            (!isTransfer && incomeOrCost === IncomeOrCost.cost ? amount : 0),
+        ),
+        income: num(
+          income +
+            (!isTransfer && incomeOrCost === IncomeOrCost.income ? amount : 0),
+        ),
+      }),
+      { cost: 0, income: 0 },
+    );
+    return (
+      <div>
+        {cost ? <div>coast: {cost}</div> : null}
+        {income ? <div>income: {income}</div> : null}
+      </div>
+    );
   }, []);
 
-  const lineEnvent = useMemo(
-    () => ({
-      updateAxisPointer: (event: any) => {
-        const xAxisInfo = event.axesInfo?.[0];
-        if (xAxisInfo) {
-          updatePieOpts(xAxisInfo.value);
-        }
-      },
-      datazoom: (event: any) => {
-        const { start, end } = event;
-        const dataHandler = dataRef.current;
-        if (dataHandler) {
-          const [lineOpts, pieOpts] = dataHandler.setDatazoom(
-            start as number,
-            end as number,
-          );
-          setLineOptions(lineOpts);
-          setPieOptions(pieOpts);
-        }
-      },
-      axisareaselected: (e: any) => {},
+  useEffect(() => {
+    if (token) {
+      getUserInfo().then(({ data }) => {
+        setCashbook(new Cashbook(data));
+        setUserData(data);
+      });
+    }
+  }, [token]);
 
-      legendselectchanged: (event: any) => {
-        const dataHandler = dataRef.current;
-        if (dataHandler) {
-          merge(dataHandler.lineLegendSelected, event.selected);
-          storage.set('line_legend_selected', dataHandler.lineLegendSelected);
-        }
-      },
+  const contextVal = useMemo(
+    () => ({
+      cashbook,
+      drawerBilling,
+      setDrawerBilling,
+      forceUpdate,
+      filter,
+      setFilter,
     }),
-    [],
+    [cashbook, drawerBilling, filter],
   );
 
-  const pieEvent = useMemo(
-    () => ({
-      legendselectchanged: (event: any) => {
-        const dataHandler = dataRef.current;
-        if (dataHandler) {
-          merge(dataHandler.pieLegendSelected, event.selected);
-          storage.set('pie_legend_selected', dataHandler.pieLegendSelected);
-          setPieOptions(dataHandler.getPieOptions());
-        }
-      },
-    }),
-    [],
-  );
+  if (!token) {
+    return (window.location.href = '/login');
+  }
 
   return (
-    <Wrapper>
-      <Spin spinning={loading}>
-        <Header queryData={queryData} dataHandler={dataRef.current} />
-        <LayoutContent>
-          {lineOptions && (
-            <ReactECharts
-              style={{ height: '500px', width: '80%' }}
-              className="line-echarts-content"
-              ref={e => (lineRef.current = e)}
-              option={lineOptions}
-              notMerge={true}
-              lazyUpdate={true}
-              onEvents={lineEnvent}
+    <CashbookContext.Provider value={contextVal}>
+      <div>
+        <Row>
+          <Col span={12}>
+            <BillingTimeline />
+          </Col>
+          <Col span={12}>
+            <Tabs
+              items={[
+                {
+                  label: '账户',
+                  key: 'account',
+                  children: <AccountList />,
+                },
+                {
+                  label: '分类',
+                  key: 'category',
+                  children: <CategoryList />,
+                },
+              ]}
+              tabBarExtraContent={<Chart />}
             />
-          )}
-          {pieOptions && (
-            <>
-              <ReactECharts
-                style={{ height: '1200px', width: '80%' }}
-                ref={e => (pieRef.current = e)}
-                onEvents={pieEvent}
-                className="pie-echarts-content"
-                option={pieOptions}
-              />
-            </>
-          )}
-          {loginVisible ? <UserLogin queryData={queryData} /> : null}
-          {emptyVisible ? <EmptyWrapper /> : null}
-        </LayoutContent>
-      </Spin>
-    </Wrapper>
+          </Col>
+        </Row>
+        <DrawerBilling />
+        <EditBtn onClick={() => setDrawerBilling({ isCreate: true })}>
+          <PlusOutlined rev="" />
+        </EditBtn>
+      </div>
+    </CashbookContext.Provider>
   );
 };
 
-export default Home;
+export default IndexPage;

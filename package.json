@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "NEXT_PUBLIC_KEY=1234 & NEXT_PUBLIC_SPLIT=83947598237823 & next dev -p 3101",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3102",
     "lint": "next lint"
   },
   "dependencies": {
-    "@ant-design/icons": "^4.8.0",
+    "@ant-design/icons": "^5.1.4",
     "@types/styled-components": "^5.1.26",
+    "ahooks": "^3.7.7",
     "antd": "^5.1.2",
     "axios": "^0.27.2",
     "dayjs": "^1.11.5",
@@ -24,6 +25,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "styled-components": "^5.3.6",
+    "tablestore": "^4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -34,6 +36,7 @@
     "@types/node-imap": "^0.9.0",
     "@types/react": "18.0.17",
     "@types/react-dom": "18.0.6",
+    "@types/tablestore": "^5.1.0",
     "babel-plugin-module-resolver": "^4.1.0",
     "eslint": "8.22.0",
     "eslint-config-next": "12.2.5",

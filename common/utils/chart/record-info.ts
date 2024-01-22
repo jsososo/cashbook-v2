@@ -1,6 +1,7 @@
 import { IncomeOrCost, incomeOrCostInfoMap } from '@consts/index';
 import { RecordDetail, RawRecord } from '@types';
 import dayjs from 'dayjs';
+import Billing from '../billing';
 
 export const getItemKey = (item: Record<string, any>) => {
   return `${item['时间']}_${item['账目分类']}_${item['金额']}_${
@@ -8,6 +9,7 @@ export const getItemKey = (item: Record<string, any>) => {
   }`;
 };
 
+// 账目分类记录 图标用
 export default class RecordInfo {
   constructor(name: string, incomeOrCost?: IncomeOrCost) {
     this._name = name;
@@ -16,7 +18,7 @@ export default class RecordInfo {
   private _name: string;
   private _duplicate: boolean = false;
 
-  list: RecordDetail[] = [];
+  list: Billing[] = [];
 
   getItemKey = getItemKey;
 
@@ -31,35 +33,26 @@ export default class RecordInfo {
     this._duplicate = true;
   }
 
-  push(rawRecord: RawRecord) {
+  push(billing: Billing) {
     const { incomeOrCost } = this;
-    const record: RecordDetail = {
-      incomeOrCost:
-        incomeOrCost || rawRecord['金额'] > 0
-          ? IncomeOrCost.income
-          : IncomeOrCost.cost,
-      type: this._name,
-      amount: Math.abs(rawRecord['金额']),
-      date: dayjs(rawRecord['时间'], 'YYYY/MM/DD').valueOf(),
-      desc: rawRecord['备注'],
-      key: getItemKey(rawRecord),
-    };
-    this.list.push(record);
+
+    this.list.push(billing);
   }
 
   getAmount(startDate: number, endDate: number, filters?: string[]) {
     let amount = 0;
     for (let record of this.list) {
-      if (filters?.includes(record.key || '')) {
+      if (filters?.includes(record.id || '')) {
         continue;
       }
-      if (record.date < startDate) {
+      if (record.time.valueOf() < startDate) {
         continue;
       }
-      if (record.date >= endDate) {
+      if (record.time.valueOf() >= endDate) {
         break;
       }
-      amount += record.amount * (this.incomeOrCost ? 1 : record.incomeOrCost);
+
+      amount += record.amount;
     }
     return Math.round(amount * 100) / 100;
   }

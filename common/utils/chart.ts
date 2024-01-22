@@ -1,8 +1,8 @@
 import dayjs from 'dayjs';
 import { RawRecord } from '@types';
-import RecordInfo from './record-info';
-import SurplusInfo from './surplus-info';
-import TotalInfo from './total-info';
+import RecordInfo from './chart/record-info';
+import SurplusInfo from './chart/surplus-info';
+import TotalInfo from './chart/total-info';
 import { IncomeOrCost, incomeOrCostInfoMap } from '@consts/index';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
@@ -17,15 +17,6 @@ import storage from './storage';
  * ]
  */
 type ResultArr = any[][];
-
-type TotalLineData = {
-  result: ResultArr;
-  costMap: {
-    [IncomeOrCost.income]: Set<string>;
-    [IncomeOrCost.cost]: Set<string>;
-    0: Set<string>;
-  };
-};
 
 export type Options = {
   filters?: string[];
@@ -44,7 +35,7 @@ const sum = (
   return Number(Number(result).toFixed(2));
 };
 
-export default class DataHandler {
+export default class Chart {
   constructor(rawRecordArr: RawRecord[], options?: Options) {
     this.updateData(rawRecordArr);
     this.getTitle = this.getTitle.bind(this);
@@ -139,73 +130,6 @@ export default class DataHandler {
     this.startDate = startDate;
     this.recordMap = resultMap;
   };
-
-  getLineData(): TotalLineData {
-    const {
-      startDate,
-      endDate,
-      dateCount: count,
-      dateUnit: unit,
-      recordMap,
-    } = this;
-
-    let [s, e] = [
-      dayjs(startDate).startOf(unit),
-      dayjs(startDate)
-        .add(count, unit)
-        .startOf(unit)
-        .subtract(1, 'millisecond'),
-    ];
-
-    // 数据初始化
-    const resultArr: ResultArr = [['Type']];
-    const timeArr = resultArr[0];
-    const formatMap: Record<typeof unit, string> = {
-      d: 'MM.DD',
-      M: 'YY.MM',
-      y: 'YYYY',
-    };
-    const timeFormat = formatMap[unit];
-    const resultMap: Record<string, number[]> = {};
-    Object.values(recordMap).forEach(record => (resultMap[record.name] = []));
-    const costMap = {
-      [IncomeOrCost.income]: new Set<string>(),
-      [IncomeOrCost.cost]: new Set<string>(),
-      0: new Set<string>(),
-    };
-
-    // 开始循环，统计所有的数据，填入 resultArr
-    do {
-      // 如果横坐标间隔大于 1 天/月/年，显示区间为 xx.xx - xx.xx
-      if (count > 1) {
-        timeArr.push(`${s.format(timeFormat)}-${e.format(timeFormat)}`);
-      } else {
-        // 如果横坐标间隔为 1 天/月/年，直接显示那个时间就 ok
-        timeArr.push(s.format(timeFormat));
-      }
-      Object.values(recordMap).forEach(record => {
-        resultMap[record.name].push(
-          record.getAmount(s.valueOf(), e.valueOf(), this.filters),
-        );
-
-        // 对收支数据进行额外的计算
-        costMap[record.incomeOrCost || 0].add(record.name);
-      });
-      s = s.add(count, unit).startOf(unit);
-      e = e.add(count, unit).endOf(unit);
-    } while (s.valueOf() <= endDate);
-
-    Object.entries(resultMap).forEach(([typeName, arr]) => {
-      if (arr.find(v => v !== 0)) {
-        resultArr.push([typeName, ...arr]);
-      }
-    });
-    this.lineData = {
-      result: resultArr,
-      costMap,
-    };
-    return this.lineData;
-  }
 
   getRawRecordArr() {
     return this.rawRecordArr.filter(item => item['账目分类'] !== '转账');

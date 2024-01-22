@@ -1,5 +1,5 @@
 import { ReloadOutlined, UserOutlined } from '@ant-design/icons';
-import DataHandler from '@utils/data-handler';
+import DataHandler from '@utils/chart/data-handler';
 import { Wrapper, Avatar } from './styled';
 import { Row, Space, Dropdown } from 'antd';
 import storage from '@utils/storage';
