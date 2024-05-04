@@ -2,7 +2,12 @@ import { IncomeOrCost, incomeOrCostInfoMap } from '@consts';
 import { RawRecord } from '@types';
 import dayjs from 'dayjs';
 import { EChartsOption } from 'echarts';
-import { ServiceAccount, ServiceBilling, ServiceCategory } from '../services';
+import {
+  ServiceAccount,
+  ServiceBilling,
+  ServiceCategory,
+  ServiceUserInfo,
+} from '../services';
 import Account, { IAccountProps } from './account';
 import Billing, { IBillingProps } from './billing';
 import BillingCategory, { IBillingCategoryProps } from './billing-category';
@@ -16,12 +21,6 @@ type DateData = {
   totalIncome: number;
   totalCost: number;
   records: Billing[];
-};
-
-type CashbookInitialData = {
-  accounts: ServiceAccount[];
-  billings: ServiceBilling[];
-  categories: ServiceCategory[];
 };
 
 /**
@@ -61,12 +60,13 @@ const sum = (
 };
 
 export default class Cashbook {
-  constructor(initialData?: CashbookInitialData) {
+  constructor(initialData?: ServiceUserInfo) {
     this.createCategory = this.createCategory.bind(this);
     this.getAndCreateCategory = this.getAndCreateCategory.bind(this);
     this.createAccount = this.createAccount.bind(this);
     this.getAndCreateAccount = this.getAndCreateAccount.bind(this);
     this.createBilling = this.createBilling.bind(this);
+    this.kanban_ids = initialData?.kanban_ids || [];
 
     if (initialData) {
       initialData.accounts.forEach(v => this.getAndCreateAccount(v));
@@ -146,6 +146,14 @@ export default class Cashbook {
   get updateAt() {
     return this._updateAt;
   }
+
+  kanban_ids: string[] = [];
+
+  upsertKanbanId = (id: string) => {
+    const kanbanIdSet = new Set(this.kanban_ids);
+    kanbanIdSet.add(id);
+    this.kanban_ids = Array.from(kanbanIdSet);
+  };
 
   billings: Billing[] = [];
 

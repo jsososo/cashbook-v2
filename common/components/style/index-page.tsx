@@ -27,8 +27,18 @@ export const EmptyWrapper = styled(Empty)`
 `;
 
 export const LayoutContent = styled(Layout.Content)`
-  margin-top: 40px;
   min-height: calc(100vh - 64px);
+
+  .filter-wrapper {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding: 0 10%;
+
+    .cat-filter {
+      margin-left: 12px;
+    }
+  }
 `;
 
 export const EditBtn = styled.div`

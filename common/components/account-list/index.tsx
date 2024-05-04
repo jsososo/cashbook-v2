@@ -1,68 +1,103 @@
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { CashbookContext } from '../../../pages';
 import { Wrapper } from './style';
 import { Button, Input } from 'antd';
 import { useBoolean } from 'ahooks';
 import { updateAccount } from '../../services';
 import { genId } from '@utils/tools';
+import { FormOutlined } from '@ant-design/icons';
+import Account from '@utils/account';
 
 const AccountList = () => {
   const { cashbook } = useContext(CashbookContext);
 
-  const [inputVisible, { setTrue: showInput, setFalse: hideInput }] =
-    useBoolean(false);
+  useBoolean(false);
+  const [editIndex, setEditIndex] = useState(-1);
 
   const [inputName, setInputName] = useState('');
 
   const onCreate = useCallback(async () => {
-    const params = { id: genId(), name: inputName };
+    const params = {
+      id: cashbook.accounts[editIndex - 1]?.id || genId(),
+      name: inputName,
+    };
     await updateAccount(params);
-    cashbook.createAccount(params);
+    if (editIndex > 0) {
+      cashbook.accounts[editIndex - 1].update(params);
+    } else {
+      cashbook.createAccount(params);
+    }
     setInputName('');
-    hideInput();
+    setEditIndex(-1);
+  }, [cashbook, inputName, editIndex]);
+
+  const onClickCreate = useCallback(() => {
+    setEditIndex(0);
+    setInputName('');
   }, []);
+
+  const onCancelInput = useCallback(() => {
+    setEditIndex(-1);
+    setInputName('');
+  }, []);
+
+  const onClickEdit = useCallback(
+    (index: number) => {
+      setEditIndex(index);
+      setInputName(cashbook.accounts[index - 1]?.name);
+    },
+    [cashbook.accounts],
+  );
 
   return (
     <Wrapper>
-      {inputVisible ? (
-        <div>
-          <div className="account-item">
-            <div className="account-name">
-              <Input
-                className="acount-input"
-                value={inputName}
-                onChange={e => setInputName(e.target.value)}
-                maxLength={10}
-                showCount
-              />
-              <Button
-                type="primary"
-                className="confirm-create-btn"
-                onClick={onCreate}
-                disabled={
-                  !inputName ||
-                  cashbook.accounts.some(({ name }) => name === inputName)
-                }>
-                确认
-              </Button>
-              <Button onClick={hideInput}>取消</Button>
-            </div>
-          </div>
-        </div>
-      ) : (
+      {editIndex === 0 ? null : (
         <>
           {cashbook.accounts.length ? null : (
             <span className="empty-text">暂无账户</span>
           )}
-          <Button onClick={showInput}>新建账户</Button>
+          <Button onClick={onClickCreate}>新建账户</Button>
         </>
       )}
-      {cashbook.accounts.map(({ name, amount }) => (
-        <div className="account-item" key={name}>
-          <div className="account-name">{name}</div>
-          <div className="account-amount">{amount}</div>
-        </div>
-      ))}
+      {/* @ts-ignore */}
+      {[{}, ...cashbook.accounts].map(({ name, amount, id }, index) =>
+        (index === 0 && editIndex === index) || !!index ? (
+          <div className="account-item" key={`${id}_${index}`}>
+            {editIndex === index ? (
+              <>
+                <Input
+                  className="acount-input"
+                  value={inputName}
+                  onChange={e => setInputName(e.target.value)}
+                  maxLength={10}
+                  showCount
+                />
+                <Button
+                  type="primary"
+                  className="confirm-create-btn"
+                  onClick={onCreate}
+                  disabled={
+                    !inputName ||
+                    cashbook.accounts.some(({ name }) => name === inputName)
+                  }>
+                  确认
+                </Button>
+                <Button onClick={onCancelInput}>取消</Button>
+              </>
+            ) : (
+              <>
+                <FormOutlined
+                  className="edit-button"
+                  rev=""
+                  onClick={() => onClickEdit(index)}
+                />
+                <div className="account-name">{name}</div>
+                <div className="account-amount">{amount}</div>
+              </>
+            )}
+          </div>
+        ) : null,
+      )}
     </Wrapper>
   );
 };

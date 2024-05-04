@@ -15,19 +15,20 @@ const handleData2Array = (primaryKey: Record<string, any>) =>
     [key]: value,
   }));
 
-const handleArray2Data = (array: Record<string, any>[]) =>
+const handleArray2Data = <T>(array: Record<string, any>[]): T =>
   array.reduce(
-    (prev, v) => ({
-      ...prev,
-      [v.name || v.columnName]: v.value || v.columnValue,
-    }),
-    {} as Record<string, any>,
+    (prev, v) =>
+      ({
+        ...prev,
+        [v.name || v.columnName]: v.value || v.columnValue,
+      } as T),
+    {} as T,
   );
 
-export const getRow = (
+export const getRow = <T>(
   tableName: TableName,
   primaryKey: Record<string, any>,
-) => {
+): Promise<T> => {
   return new Promise((resolve, reject) => {
     client.getRow(
       {
@@ -40,7 +41,7 @@ export const getRow = (
         }
 
         return resolve(
-          handleArray2Data([
+          handleArray2Data<T>([
             ...(data.row?.primaryKey || []),
             ...(data.row?.attributes || []),
           ]),
@@ -50,15 +51,15 @@ export const getRow = (
   });
 };
 
-export const getBatchRow = (
+export const getBatchRow = <T>(
   tableName: TableName,
   primaryKeys: Record<string, any>[],
-) => {
+): Promise<T[]> => {
   return new Promise((resolve, reject) => {
     if (!primaryKeys.length) {
       return resolve([]);
     }
-    const resGroup: any[] = [];
+    const resGroup: T[] = [];
     let count = 0;
     let successCount = 0;
 
@@ -81,7 +82,7 @@ export const getBatchRow = (
           }
           resGroup.push(
             ...(data?.tables?.[0] || []).map(v =>
-              handleArray2Data([
+              handleArray2Data<T>([
                 ...(v?.primaryKey || []),
                 ...(v?.attributes || []),
               ]),
@@ -97,11 +98,11 @@ export const getBatchRow = (
   });
 };
 
-export const putRow = (
+export const putRow = <T>(
   tableName: TableName,
   primaryKey: Record<string, any>,
   value: Record<string, any>,
-) => {
+): Promise<T> => {
   return new Promise((resolve, reject) => {
     client.putRow(
       {
@@ -119,7 +120,7 @@ export const putRow = (
           return reject(err);
         }
 
-        return resolve(data);
+        return resolve(data as T);
       },
     );
   });

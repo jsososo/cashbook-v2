@@ -19,8 +19,11 @@ const Login = () => {
       create,
     });
 
+    // @ts-ignore
     if (data?.token) {
+      // @ts-ignore
       setToken(data?.token);
+      debugger;
       window.location.href = '/';
     }
   };

@@ -1,4 +1,5 @@
 import { IncomeOrCost, IncomeOrCostStr } from '@consts';
+import { NextApiResponse } from 'next';
 
 export type RecordDetail = {
   incomeOrCost: IncomeOrCost;
@@ -30,4 +31,23 @@ export type IncomeOrCostInfo = {
 export type UserInfo = {
   email: string;
   key: string;
+};
+
+export type ReqBody<T> = {
+  token: string;
+} & T;
+
+export type ResBody<T> = NextApiResponse<{
+  success: boolean;
+  data?: T;
+  message?: string;
+  code?: number;
+}>;
+
+export type ServiceRelation = {
+  user_id?: string;
+  category_ids?: string;
+  billing_ids?: string;
+  account_ids?: string;
+  kanban_ids?: string;
 };

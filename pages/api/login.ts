@@ -16,9 +16,10 @@ export default async function handler(
   const user = (await getRow(TableName.user, { name })) as {
     id?: string;
     name?: string;
+    key?: string;
   };
   if (!create) {
-    if (user.id) {
+    if (user.id && user?.key === key) {
       putRow(TableName.token, { token }, { id: user.id, time: Date.now() });
       res.send({ success: true, data: { token } });
     } else {

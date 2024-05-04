@@ -32,6 +32,13 @@ export default class BillingCategory {
     this.id = id || genId();
   }
 
+  update(info: IBillingCategoryProps) {
+    const { name = this.name } = info;
+
+    this.name = name;
+    this.icon = name[0];
+  }
+
   id: string;
 
   name: string;

@@ -1,6 +1,8 @@
 import { request } from '@utils/request';
 import type { RequestType } from '@utils/request';
 import { IncomeOrCost } from '@consts';
+import { RespUserInfo } from '../../pages/api/getUserInfo';
+import { ResBody } from '@types';
 
 type ServiceFunc = (
   params?: Record<string, any>,
@@ -34,6 +36,7 @@ export type ServiceAccount = {
   name?: string;
   icon?: string;
   deleted?: boolean;
+  user_id?: string;
 };
 export const updateAccount = (params: ServiceAccount) =>
   request({
@@ -49,6 +52,7 @@ export type ServiceCategory = {
   deleted?: boolean;
   is_transfer?: boolean;
   type: IncomeOrCost;
+  user_id?: string;
 };
 
 export const updateCategory = (params: ServiceCategory) =>
@@ -68,6 +72,7 @@ export type ServiceBilling = {
   account_id: string;
   amount: number;
   remark?: string;
+  user_id?: string;
 };
 export const updateBilling = (params: ServiceBilling) =>
   request({
@@ -76,53 +81,71 @@ export const updateBilling = (params: ServiceBilling) =>
     requestType: 'post',
   });
 
-export const updateRelation = (params: {
-  relation: {
-    category_ids: string;
-    account_ids: string;
-    billing_ids: string;
+export type ServiceUserInfo = {
+  categories: ServiceCategory[];
+  accounts: ServiceAccount[];
+  billings: ServiceBilling[];
+  kanban_ids: string[];
+};
+
+const am2Number = (str: string) => {
+  const [n1, n2] = str.split('.');
+  return parseInt(n1, 36) + parseInt(n2 || '0', 36) / 100;
+};
+
+export const getUserInfo = () =>
+  request<RespUserInfo>({
+    url: '/getUserInfo',
+    requestType: 'post',
+  }).then(res => ({
+    success: true,
+    data: {
+      billings: (res.data?.billings || []).map((v: string) => {
+        const [ai, ci, am, time, id, inr = '0', ...r] = v.split('_');
+
+        return {
+          // @ts-ignore
+          account_id: res.data?.accounts?.[parseInt(ai, 36)]?.id,
+          // @ts-ignore
+          category_id: res.data?.categories?.[parseInt(ci, 36)]?.id,
+          amount: am2Number(am),
+          time: parseInt(time, 36) * 1000,
+          remark: r.join('_'),
+          is_none_rountine: !!Number(inr),
+          id,
+        };
+      }) as ServiceBilling[],
+      categories: res.data?.categories || [],
+      accounts: res.data?.accounts || [],
+      kanban_ids: res.data?.kanban_ids || [],
+    },
+  }));
+
+export type ServiceKanban = {
+  id?: string;
+  name?: string;
+  updated?: number;
+  deleted?: string;
+  uid?: string;
+  settings: {
+    category_ids?: string[];
+    include_none_rountine?: boolean;
+    show_total?: boolean;
+    show_all_sum?: boolean;
+    show_all_cat?: boolean;
   };
-}) =>
-  request({
-    url: '/updateRelation',
+};
+
+export const getKanban = (params: { ids: string }) =>
+  request<{ kanbanList: ServiceKanban[] }>({
+    url: '/getKanban',
     params,
     requestType: 'post',
   });
 
-export type ServiceUserInfo = {
-  categories: ServiceCategory[];
-  accounts: ServiceAccount[];
-  billings: (ServiceBilling & {
-    a: string;
-    c: string;
-    am: number;
-    t: string;
-    n?: string;
-    r?: string;
-    in?: boolean;
-    i?: string;
-  })[];
-};
-
-export const getUserInfo = () =>
-  request<ServiceUserInfo>({
-    url: '/getUserInfo',
+export const updateKanban = (params: ServiceKanban) =>
+  request<{ id: string }>({
+    url: '/updateKanban',
+    params,
     requestType: 'post',
-  }).then(res => {
-    // @ts-ignore
-    res.data.billings = (res.data?.billings || []).map(
-      ({ a, c, am, t, n, r, i, ...rest }) => ({
-        // @ts-ignore
-        account_id: res.data?.accounts?.[a]?.id,
-        // @ts-ignore
-        category_id: res.data?.categories?.[c]?.id,
-        amount: am,
-        time: parseInt(t, 36),
-        name: n || '',
-        remark: r || '',
-        is_none_rountine: rest.in || false,
-        id: i,
-      }),
-    );
-    return res;
   });

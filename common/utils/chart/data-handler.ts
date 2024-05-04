@@ -6,8 +6,8 @@ import TotalInfo from './total-info';
 import { IncomeOrCost, incomeOrCostInfoMap } from '@consts/index';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
-import storage from '../storage';
 import Billing from '@utils/billing';
+import { ServiceKanban } from '../../services';
 
 type RawRecord = Billing;
 
@@ -35,7 +35,49 @@ export type Options = {
   hideTotal?: boolean;
   dateCount?: number;
   unit: 'd' | 'M' | 'y';
+  kanban?: ServiceKanban;
 };
+
+const colors = [
+  '#336699',
+  '#99ccff',
+  '#6699cc',
+  '#336666',
+  '#66cccc',
+  '#339999',
+  '#99cccc',
+  '#b4d8c2',
+  '#ff9933',
+  '#ffcc66',
+  '#33cccc',
+  '#66ccff',
+  '#3366ff',
+  '#9999ff',
+  '#cc99ff',
+  '#33cc99',
+  '#aaccff',
+  '#a8c8b4',
+  '#1f77b4',
+  '#ff7f0e',
+  '#2ca02c',
+  '#d62728',
+  '#9467bd',
+  '#8c564b',
+  '#e377c2',
+  '#7f7f7f',
+  '#bcbd22',
+  '#17becf',
+  '#3399cc',
+  '#66cc99',
+  '#e6b800',
+  '#b87000',
+  '#b3b3cc',
+  '#7f7f00',
+  '#ff0000',
+  '#800000',
+  '#cc0000',
+  '#b30000',
+];
 
 const sum = (
   array: number[],
@@ -59,7 +101,7 @@ export default class DataHandler {
     this.rawRecordArr = rawRecordArr.sort(
       (a, b) => a.time.valueOf() - b.time.valueOf(),
     );
-    this.handleXlsx();
+    // this.handleXlsx();
   }
 
   // setTimePeriod(startDate?: number, endDate?: number) {
@@ -72,13 +114,15 @@ export default class DataHandler {
       filters = this.filters,
       dateCount = this.dateCount || 1,
       unit = this.dateUnit || 'M',
-      hideTotal = false,
+      kanban,
     } = options || {};
 
     this.filters = filters;
-    this.hideTotal = hideTotal;
+    this.kanban = kanban?.settings || {};
+    this.kanban.categorySet = new Set(kanban?.settings?.category_ids || []);
     this.dateCount = dateCount;
     unit && (this.dateUnit = unit);
+    this.handleXlsx();
     this.getLineData();
     const dataLength = (this.lineData?.result?.[0]?.length || 1) - 1;
     this.dataRange = [
@@ -102,7 +146,9 @@ export default class DataHandler {
   private recordMap: Record<string, RecordInfo> = {};
   private dataRange = [0, 0];
   private filters: string[] = [];
-  private hideTotal: boolean = false;
+  private kanban?: ServiceKanban['settings'] & {
+    categorySet?: Set<string>;
+  } = undefined;
 
   handleXlsx = () => {
     const { rawRecordArr = [] } = this;
@@ -129,14 +175,30 @@ export default class DataHandler {
         resultMap[key] = new RecordInfo(name, incomeOrCost.val);
         if (resultMap[reverseKey]) {
           resultMap[key].setDuplicate();
-          resultMap[key].setDuplicate();
+          resultMap[reverseKey].setDuplicate();
         }
       }
-      if (resultMap[key]) {
+
+      let includeVal = false;
+
+      if (!this.kanban?.categorySet?.has(val.category.id)) {
+        delete resultMap[key];
+      }
+
+      if (
+        resultMap[key] &&
+        (this.kanban?.include_none_rountine || !val.isNoneRountine)
+      ) {
+        includeVal = true;
         resultMap[key].push(val);
       }
-      incomeOrCost.val === IncomeOrCost.income && resultMap['收入'].push(val);
-      incomeOrCost.val === IncomeOrCost.cost && resultMap['支出'].push(val);
+
+      incomeOrCost.val === IncomeOrCost.income &&
+        (includeVal || this.kanban?.show_all_sum) &&
+        resultMap['收入'].push(val);
+      incomeOrCost.val === IncomeOrCost.cost &&
+        (includeVal || this.kanban?.show_all_sum) &&
+        resultMap['支出'].push(val);
       resultMap['总额'].push(val);
       resultMap['盈余'].push(val);
       startDate = Math.min(startDate, val.time.valueOf());
@@ -144,6 +206,21 @@ export default class DataHandler {
 
     this.startDate = startDate;
     this.recordMap = resultMap;
+    if (!this.kanban?.show_all_cat) {
+      this.lineLegendSelected = Object.values(resultMap).reduce(
+        (o: Record<string, boolean>, v) => {
+          o[v.name] = ['总额', '收入', '支出', '盈余'].includes(v.name);
+          return o;
+        },
+        {},
+      );
+    }
+    if (!this.kanban?.show_total) {
+      delete resultMap['总额'];
+    }
+    if (!this.kanban?.show_all_sum) {
+      delete resultMap['盈余'];
+    }
   };
 
   getLineData(): TotalLineData {
@@ -213,11 +290,11 @@ export default class DataHandler {
     return this.rawRecordArr.filter(item => !item.isTransfer);
   }
 
-  lineLegendSelected: Record<string, boolean> =
-    storage.get('line_legend_selected') || {};
+  lineLegendSelected: Record<string, boolean> = {};
+  // storage.get('line_legend_selected') || {};
 
-  pieLegendSelected: Record<string, boolean> =
-    storage.get('pie_legend_selected') || {};
+  pieLegendSelected: Record<string, boolean> = {};
+  // storage.get('pie_legend_selected') || {};
 
   private getFilterData = (type?: IncomeOrCost) => {
     const { result, costMap } = this.getLineData();
@@ -279,9 +356,7 @@ export default class DataHandler {
   }
 
   getLineOptions(): EChartsOption {
-    const source = (this?.lineData?.result || []).filter(
-      v => !(this.hideTotal && v?.[0] === '总额'),
-    );
+    const source = this?.lineData?.result || [];
     const legendDataList = source.map(list => list[0]);
     const legendSelected = legendDataList.reduce(
       (prev, name) => ({
@@ -296,6 +371,7 @@ export default class DataHandler {
         type: 'category',
         boundaryGap: false,
       },
+      color: colors,
       title: {
         text: `${this.getTitle(true, true)} 趋势`,
       },
@@ -401,6 +477,7 @@ export default class DataHandler {
         selected: pieLegendSelected,
         show: true,
       },
+      color: colors,
       tooltip: {
         trigger: 'item',
         formatter: '{b}: {c}¥（{d}%）',
@@ -492,6 +569,18 @@ export default class DataHandler {
         {
           ...baseSeries,
           left: '-40%',
+          top: '760',
+          data: handleSource(source, true),
+        },
+        {
+          ...baseSeries,
+          top: '760',
+          left: '40%',
+          data: handleSource(source),
+        },
+        {
+          ...baseSeries,
+          left: '-40%',
           top: '80',
           data: handleSource(costSource, true),
         },
@@ -512,18 +601,6 @@ export default class DataHandler {
           top: '420',
           left: '40%',
           data: handleSource(incomSource),
-        },
-        {
-          ...baseSeries,
-          left: '-40%',
-          top: '760',
-          data: handleSource(source, true),
-        },
-        {
-          ...baseSeries,
-          top: '760',
-          left: '40%',
-          data: handleSource(source),
         },
       ],
     };

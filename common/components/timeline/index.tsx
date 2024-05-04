@@ -18,7 +18,7 @@ import React, {
   useState,
 } from 'react';
 import { CashbookContext } from '../../../pages';
-import { StyledTimeline } from './style';
+import { StyledWrapper, FilterWrapper } from './style';
 import { useScroll } from 'ahooks';
 
 const Text = Typography.Text;
@@ -173,49 +173,52 @@ const BillingTimeline = () => {
     setFilter({ category: v });
   }, []);
 
-  const updateMinAmount = useCallback((e: any) => {
-    const v = Number(e?.target?.value || 0);
-    setFilter({ minAmount: Number.isNaN(v) ? 0 : v });
+  const updateMinAmount = useCallback((v?: any) => {
+    setFilter({ minAmount: v || 0 });
   }, []);
 
   return (
-    <StyledTimeline>
-      <div>
-        <Select
-          style={{ width: '150px' }}
-          showSearch
-          filterOption={filterOption}
-          mode="multiple"
-          options={accountOptions}
-          value={filter.account}
-          placeholder="全部账户"
-          allowClear
-          onChange={updateAccountFilter}
-        />
-        <Select
-          placeholder="全部分类"
-          style={{ width: '150px' }}
-          showSearch
-          filterOption={filterOption}
-          mode="multiple"
-          value={filter.category}
-          options={categoryOptions}
-          allowClear
-          onChange={updateCategoryFilter}
-        />
-        <span>
-          <span>金额大于</span>
-          <InputNumber value={filter.minAmount} onBlur={updateMinAmount} />
-        </span>
-      </div>
-      <div className="scroll-timeline" ref={timelineRef}>
+    <>
+      <StyledWrapper className="scroll-timeline" ref={timelineRef}>
+        <FilterWrapper>
+          <Select
+            style={{ width: '150px' }}
+            showSearch
+            filterOption={filterOption}
+            mode="multiple"
+            options={accountOptions}
+            value={filter.account}
+            placeholder="全部账户"
+            allowClear
+            onChange={updateAccountFilter}
+          />
+          <Select
+            placeholder="全部分类"
+            style={{ width: '150px' }}
+            showSearch
+            filterOption={filterOption}
+            mode="multiple"
+            value={filter.category}
+            options={categoryOptions}
+            allowClear
+            onChange={updateCategoryFilter}
+          />
+          <InputNumber
+            style={{ width: '150px' }}
+            placeholder="金额大于"
+            value={filter.minAmount || ''}
+            onChange={updateMinAmount}
+          />
+        </FilterWrapper>
         <div className="inner-content" ref={timelineInnerRef}>
-          {items.map(({ key, ...rest }) => (
-            <Timeline.Item key={key} {...rest} />
-          ))}
+          <Timeline>
+            {items.map(({ key, ...rest }) => (
+              <Timeline.Item key={key} {...rest} />
+            ))}
+          </Timeline>
         </div>
-      </div>
-    </StyledTimeline>
+      </StyledWrapper>
+    </>
   );
 };
 

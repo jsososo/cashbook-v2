@@ -30,12 +30,30 @@ export const Wrapper = styled.div`
 
     &:hover {
       background: #1677ff11;
+
+      .edit-button {
+        width: 14px;
+        color: #666;
+      }
+    }
+
+    .edit-button {
+      font-size: 14px;
+      padding: 4px 0;
+      cursor: pointer;
+      color: transparent;
+      width: 0;
+      transition: 0.3s;
+
+      &:hover {
+        color: #1677ff
+      }
     }
 
     .account-name {
       flex: 1;
       color: #666;
-      padding: 0 24px;
+      padding: 0 24px 0 12px;
     }
     .account-amount {
       flex: 1;

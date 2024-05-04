@@ -19,6 +19,13 @@ export default class Account {
     this.id = id || genId();
   }
 
+  update(info: IAccountProps) {
+    const { name = this.name, icon = this.icon, id = this.id } = info;
+    this.name = name;
+    this.icon = icon || name[0];
+    this.id = id;
+  }
+
   id: string;
 
   name: string;

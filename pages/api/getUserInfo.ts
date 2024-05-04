@@ -6,9 +6,10 @@ import {
   ServiceBilling,
   ServiceCategory,
 } from '../../common/services';
+import { ResBody } from '@types';
 
-const getBatchByIdsFunc = (ids: string, tableName: TableName) =>
-  getBatchRow(
+const getBatchByIdsFunc = <T>(ids: string, tableName: TableName) =>
+  getBatchRow<T>(
     tableName,
     ids
       .split(',')
@@ -16,9 +17,16 @@ const getBatchByIdsFunc = (ids: string, tableName: TableName) =>
       .map(id => ({ id })),
   );
 
+export type RespUserInfo = {
+  categories: ServiceCategory[];
+  accounts: ServiceAccount[];
+  billings: string[];
+  kanban_ids: string[];
+};
+
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<any>,
+  res: ResBody<RespUserInfo>,
 ) {
   const { token } = req?.body;
 
@@ -40,23 +48,26 @@ export default async function handler(
     category_ids = '',
     billing_ids = '',
     account_ids = '',
+    kanban_ids = '',
   } = (await getRow(TableName.relation, { user_id })) as {
     user_id?: string;
     category_ids?: string;
     billing_ids?: string;
     account_ids?: string;
+    kanban_ids?: string;
   };
-  const result: Record<string, any[]> = {
+  const result: RespUserInfo = {
     categories: [],
     billings: [],
     accounts: [],
+    kanban_ids: [],
   };
 
   if (!id) {
     await putRow(
       TableName.relation,
       { user_id },
-      { category_ids: '', billing_ids: '', account_ids: '' },
+      { category_ids: '', billing_ids: '', account_ids: '', kanban_ids: '' },
     );
     res.send({
       success: true,
@@ -66,16 +77,14 @@ export default async function handler(
   }
 
   const [responseCategories, billings, responseAccounts] = await Promise.all([
-    getBatchByIdsFunc(category_ids, TableName.category),
-    getBatchByIdsFunc(billing_ids, TableName.billing),
-    getBatchByIdsFunc(account_ids, TableName.account),
+    getBatchByIdsFunc<ServiceCategory>(category_ids, TableName.category),
+    getBatchByIdsFunc<ServiceBilling>(billing_ids, TableName.billing),
+    getBatchByIdsFunc<ServiceAccount>(account_ids, TableName.account),
   ]);
 
   const cMap = new Map<string, number>();
 
-  const categories = (
-    responseCategories as (ServiceCategory & { user_id: string })[]
-  )
+  const categories = responseCategories
     .filter(v => !v.deleted)
     .map(({ user_id, deleted, ...rest }, i) => {
       cMap.set(rest.id || '', i);
@@ -84,49 +93,50 @@ export default async function handler(
 
   const aMap = new Map<string, number>();
 
-  const accounts = (
-    responseAccounts as (ServiceAccount & { user_id: string })[]
-  )
+  const accounts = responseAccounts
     .filter(v => !v.deleted)
     .map(({ user_id, deleted, ...rest }, i) => {
       aMap.set(rest.id || '', i);
       return rest;
     });
+
+  const amount2str = (num: number) => {
+    return num % 1
+      ? `${Math.floor(num).toString(36)}.${Math.round((num % 1) * 100).toString(
+          36,
+        )}`
+      : Math.floor(num).toString(36);
+  };
+
   res.send({
     success: true,
     data: {
       categories,
-      billings: (billings as (ServiceBilling & { user_id: string })[])
+      billings: billings
         .filter(v => !v.deleted)
         .map(
           ({
-            user_id,
             category_id,
             account_id,
             amount,
             time,
-            name,
             remark,
             id,
             is_none_rountine,
           }) => {
-            const result = {
-              a: aMap.get(account_id),
-              c: cMap.get(category_id),
-              am: amount,
-              t: time.toString(36),
-              n: name,
-              r: remark,
-              i: id,
-              in: is_none_rountine || undefined,
-            };
-            !name && delete result.n;
-            !remark && delete result.r;
-            !is_none_rountine && delete result.in;
+            const result = `${aMap.get(account_id)?.toString(36)}_${cMap
+              .get(category_id)
+              ?.toString(36)}_${amount2str(amount)}_${Math.round(
+              time / 1000,
+            ).toString(36)}_${id}${
+              is_none_rountine || remark ? `_${Number(!!is_none_rountine)}` : ''
+            }${remark ? `_${remark}` : ''}`;
+
             return result;
           },
         ),
       accounts,
+      kanban_ids: kanban_ids.split(',').filter(Boolean),
     },
   });
 }

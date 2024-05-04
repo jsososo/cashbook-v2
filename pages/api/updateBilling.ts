@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getRow, putRow } from '../../common/services/client';
 import { TableName } from '@consts/service';
 import { genId } from '@utils/tools';
+import { ServiceRelation } from '@types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -33,20 +34,12 @@ export default async function handler(
     return;
   }
 
-  const { user_id: _, ...relation } = (await getRow(TableName.relation, {
-    user_id,
-  })) as {
-    user_id?: string;
-    category_ids?: string;
-    billing_ids?: string;
-    account_ids?: string;
-  };
-
-  const result: Record<string, any[]> = {
-    categries: [],
-    billings: [],
-    accounts: [],
-  };
+  const { user_id: _, ...relation } = await getRow<ServiceRelation>(
+    TableName.relation,
+    {
+      user_id,
+    },
+  );
 
   const billing = {
     name,

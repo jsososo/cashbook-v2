@@ -5,4 +5,5 @@ export enum TableName {
   billing = 'billing',
   category = 'category',
   token = 'token',
+  kanban = 'kanban',
 }

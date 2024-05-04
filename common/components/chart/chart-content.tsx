@@ -18,15 +18,16 @@ import { CashbookContext } from '../../../pages';
 import { Radio, RadioChangeEvent, Select, Switch } from 'antd';
 import { IncomeOrCost } from '@consts';
 import { filterOption } from '@utils/tools';
+import { ServiceKanban } from '../../services';
 
 export type SettingVal = {
   excludeCategory?: string[];
-  filterNoneRountine?: boolean;
   dateCount?: number;
   unit?: 'd' | 'M' | 'y';
 };
 
-const ChartContent = () => {
+const ChartContent = (props: { kanban?: ServiceKanban }) => {
+  const { kanban } = props;
   const [lineOptions, setLineOptions] = useState<EChartsOption>();
   const [pieOptions, setPieOptions] = useState<EChartsOption>();
   const dataRef = useRef<DataHandler>();
@@ -39,50 +40,27 @@ const ChartContent = () => {
 
   const options: DataHandlerOptions = useMemo(() => {
     return {
-      hideTotal:
-        !!settingVal?.excludeCategory?.length || settingVal?.filterNoneRountine,
-      // filters: settingVal?.filter ? passRecord || [] : [],
       dateCount: settingVal?.dateCount || 1,
       unit: settingVal?.unit || 'M',
+      kanban,
     };
-  }, [passRecord, settingVal]);
-
-  const filterBillings = useMemo(() => {
-    return cashbook.billings.filter(
-      ({ isTransfer, category, isNoneRountine }) => {
-        if (isTransfer) {
-          return false;
-        }
-        if ((settingVal?.excludeCategory || []).includes(category.id)) {
-          return false;
-        }
-        if (isNoneRountine && settingVal?.filterNoneRountine) {
-          return false;
-        }
-        return true;
-      },
-    );
-  }, [cashbook.billings, settingVal]);
+  }, [passRecord, settingVal, kanban]);
 
   useEffect(() => {
-    const dataHandler = new DataHandler(filterBillings, options);
-
+    const dataHandler = new DataHandler(cashbook.billings);
     dataRef.current = dataHandler;
-
-    setLineOptions(dataHandler.getLineOptions());
-    setPieOptions(dataHandler.getPieOptions(0));
-  }, [cashbook]);
+  }, []);
 
   useEffect(() => {
     const dataHandler = dataRef.current;
-    if (dataHandler) {
-      dataHandler.updateData(filterBillings);
-      console.log(filterBillings);
-      dataHandler.setOptions(options);
-      setLineOptions(dataHandler.getLineOptions());
-      setPieOptions(dataHandler.getPieOptions(0));
+
+    if (!options.kanban || !dataHandler) {
+      return;
     }
-  }, [options, filterBillings]);
+    dataHandler.setOptions(options);
+    setLineOptions(dataHandler.getLineOptions());
+    setPieOptions(dataHandler.getPieOptions(0));
+  }, [options]);
 
   const updatePieOpts = useCallback((dataIndex: number) => {
     if (dataRef.current) {
@@ -157,58 +135,21 @@ const ChartContent = () => {
     [settingVal],
   );
 
-  const categoryOptions = cashbook.categories
-    .filter(({ isTransfer }) => !isTransfer)
-    .map(({ name, id, type }) => ({
-      value: id,
-      label: `${name}${type === IncomeOrCost.income ? ' (收入)' : ''}`,
-    }));
-
-  const onChangeExcludeCategory = useCallback(
-    (excludeCategory: []) => {
-      updateSettingVal({ ...settingVal, excludeCategory });
-    },
-    [settingVal],
-  );
-
-  const onChangeFilterNoneRoutine = useCallback(
-    (checked: boolean) => {
-      updateSettingVal({ ...settingVal, filterNoneRountine: checked });
-    },
-    [settingVal],
-  );
-
-  return (
+  return kanban ? (
     <Wrapper>
       <LayoutContent>
-        <div>
-          <Select
-            style={{ width: '200px' }}
-            value={(settingVal?.excludeCategory || []) as []}
-            onChange={onChangeExcludeCategory}
-            placeholder="分类过滤"
-            mode="multiple"
-            maxTagCount={1}
-            options={categoryOptions}
-            showSearch
-            filterOption={filterOption}
-          />
-          <span>
-            <span>过滤非日常支出</span>
-            <Switch
-              checked={settingVal?.filterNoneRountine}
-              onChange={onChangeFilterNoneRoutine}
-            />
-          </span>
-          <Radio.Group
-            defaultValue={`${settingVal?.dateCount || 1}_${
-              settingVal?.unit || 'M'
-            }`}
-            onChange={updateTimePeriod}>
-            <Radio.Button value="1_y">年</Radio.Button>
-            <Radio.Button value="3_M">季</Radio.Button>
-            <Radio.Button value="1_M">月</Radio.Button>
-          </Radio.Group>
+        <div className="filter-wrapper">
+          <div>
+            <Radio.Group
+              defaultValue={`${settingVal?.dateCount || 1}_${
+                settingVal?.unit || 'M'
+              }`}
+              onChange={updateTimePeriod}>
+              <Radio.Button value="1_y">年</Radio.Button>
+              <Radio.Button value="3_M">季</Radio.Button>
+              <Radio.Button value="1_M">月</Radio.Button>
+            </Radio.Group>
+          </div>
         </div>
         {lineOptions && (
           <ReactECharts
@@ -234,7 +175,7 @@ const ChartContent = () => {
         )}
       </LayoutContent>
     </Wrapper>
-  );
+  ) : null;
 };
 
 export default ChartContent;

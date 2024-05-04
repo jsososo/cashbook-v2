@@ -22,6 +22,7 @@ import { Row, Col, Tabs } from 'antd';
 import AccountList from '@components/account-list';
 import CategoryList from '@components/category-list';
 import Chart from '@components/chart';
+import styled from 'styled-components';
 
 export type DrawerBilling = {
   billing?: Billing;
@@ -37,6 +38,19 @@ export const CashbookContext = createContext({
   filter: {} as Record<string, any>,
   setFilter: (val: Record<string, any>) => {},
 });
+
+const PageWrapper = styled.div`
+  /* 隐藏滚动条 */
+  *::-webkit-scrollbar {
+    width: 0.5em;
+    background-color: transparent;
+  }
+
+  /* 滚动条滑块 */
+  *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+`;
 
 const IndexPage = () => {
   const refCashbook = useRef<Cashbook>();
@@ -104,7 +118,7 @@ const IndexPage = () => {
 
   return (
     <CashbookContext.Provider value={contextVal}>
-      <div>
+      <PageWrapper>
         <Row>
           <Col span={12}>
             <BillingTimeline />
@@ -131,7 +145,7 @@ const IndexPage = () => {
         <EditBtn onClick={() => setDrawerBilling({ isCreate: true })}>
           <PlusOutlined rev="" />
         </EditBtn>
-      </div>
+      </PageWrapper>
     </CashbookContext.Provider>
   );
 };

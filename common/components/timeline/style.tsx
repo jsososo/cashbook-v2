@@ -1,7 +1,6 @@
 import styled from 'styled-components';
-import { Timeline } from 'antd';
 
-export const StyledTimeline = styled(Timeline)`
+export const StyledWrapper = styled.div`
   width: 100%;
   padding: 0 4vw;
   height: 100vh;
@@ -12,10 +11,14 @@ export const StyledTimeline = styled(Timeline)`
     margin-left: 50px;
   }
 
-  .scroll-timeline {
+  &.scroll-timeline {
     max-height: calc(100vh - 50px);
     overflow: auto;
-    padding-left: 32px;
+    padding-left: 56px;
+
+    .inner-content {
+      padding-left: 56px;
+    }
 
     ::-webkit-scrollbar {
     }
@@ -23,5 +26,19 @@ export const StyledTimeline = styled(Timeline)`
 
   .remark-content {
     padding-left: 8px;
+  }
+`;
+
+export const FilterWrapper = styled.div`
+  display: flex;
+  margin-top: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background: #fff;
+  padding: 12px 0;
+
+  > div {
+    margin: 0 8px;
   }
 `;
