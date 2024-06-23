@@ -58,7 +58,9 @@ const IndexPage = () => {
   const [token] = storage.useStorage<string>('token');
   const [userData, setUserData] =
     storage.useStorage<ServiceUserInfo>('user_data');
-  const [cashbook, setCashbook] = useState(new Cashbook(userData));
+  const [_, setPrevUserData] =
+    storage.useStorage<ServiceUserInfo>('prev_user_data');
+  const [cashbook, setCashbook] = useState(new Cashbook());
   const [drawerBilling, setDrawerBilling] = useState<DrawerBilling>({});
   const [filter, setFilter] = useState<Record<string, any>>({});
   const forceUpdate = useUpdate();
@@ -94,6 +96,7 @@ const IndexPage = () => {
   useEffect(() => {
     if (token) {
       getUserInfo().then(({ data }) => {
+        setPrevUserData(userData);
         setCashbook(new Cashbook(data));
         setUserData(data);
       });

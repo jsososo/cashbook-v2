@@ -1,13 +1,7 @@
 import { IncomeOrCost, incomeOrCostInfoMap } from '@consts';
 import { RawRecord } from '@types';
 import dayjs from 'dayjs';
-import { EChartsOption } from 'echarts';
-import {
-  ServiceAccount,
-  ServiceBilling,
-  ServiceCategory,
-  ServiceUserInfo,
-} from '../services';
+import { ServiceUserInfo } from '../services';
 import Account, { IAccountProps } from './account';
 import Billing, { IBillingProps } from './billing';
 import BillingCategory, { IBillingCategoryProps } from './billing-category';
@@ -32,15 +26,6 @@ type DateData = {
  * ]
  */
 type ResultArr = any[][];
-
-type TotalLineData = {
-  result: ResultArr;
-  costMap: {
-    [IncomeOrCost.income]: Set<string>;
-    [IncomeOrCost.cost]: Set<string>;
-    0: Set<string>;
-  };
-};
 
 export type Options = {
   filters?: string[];
